@@ -7,7 +7,7 @@ Things planned :
 - [x] Start off (having this bcoz im too bad at starting off things) 
 - [ ] Initial working code
 
-- [ ] Print keys, values and key value pairs
+- [x] Print keys, and key value pairs
 - [ ] Print stuffs batch by batch once the limit reaches
 
 - [ ] implement timing based automatic transaction rollback  
