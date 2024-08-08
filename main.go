@@ -3,141 +3,151 @@ package main
 import (
   "fmt"
   "os"
+  "bufio"
   "strings"
 )
 
-var globalStore = make(map[string]string)
- 
-type Transaction struct {
-  
-  Store map[string]string
-  nextTransaction *Transaction
+var GlobalStore = make(map[string]string)
 
+type Transaction struct {
+  store   map[string]string 
+  next    *Transaction
 }
 
 type TransactionStack struct {
-
-  currentTransaction *Transaction
-  size int 
-
+  top     *Transaction
+  size    int
 }
 
-type KVStore interface {
+func (ts *TransactionStack) PushTransaction() {
+  temp := Transaction{ store : make(map[string]string) }
+  temp.next = ts.top 
+  ts.top = &temp
+  ts.size++
+}
+
+func (ts *TransactionStack) PopTransaction() {
+  if ts.size == 0 {
+    fmt.Println("No Active Transactions")
+    return 
+  }
+
+  node := &Transaction{}
+  ts.top = ts.top.next 
+  node.next = nil 
+  ts.size--
+}
+
+func (ts *TransactionStack) Peek() *Transaction {
+  return ts.top 
+}
+
+func (ts *TransactionStack) Commit() {
+
+  ActiveTransaction := ts.Peek()
+  if ActiveTransaction == nil {
+    fmt.Println("Nothing to commit")
+    return 
+  }
+
+  store := ActiveTransaction.next.store  
+  if store == nil {
+    for k, v := range ActiveTransaction.store { GlobalStore[k] = v }
+    return 
+  }
   
-  Begin()
-  Set()
-  Get()
-  Delete()
-
+  for k, v := range ActiveTransaction.store { store[k] = v }
 }
 
-func Begin() *Transaction { 
-  return &Transaction {
-    Store : make(map[string]string), 
-    nextTransaction : nil,
+func (ts *TransactionStack) RollBackTransaction() {
+
+  if ts == nil {
+    fmt.Println("You are not inside a transaction")
+    return 
   }
-}
 
-func (ts *TransactionStack) addTransactionToStack(t *Transaction) {
-  if ts.currentTransaction == nil { 
-    ts.currentTransaction = t 
-  } else {
-    t.nextTransaction = ts.currentTransaction
-    ts.currentTransaction = t 
+  store := ts.Peek().store 
+  if len(store) == 0 {
+    fmt.Println("Nothing to rollback")
+    return 
   }
-  ts.size = ts.size + 1
+
+  for k := range store { delete(ts.Peek().store, k) }
 }
 
-func (ts *TransactionStack) removeTopOfStack() {
-  ts.currentTransaction = ts.currentTransaction.nextTransaction
-  ts.size = ts.size - 1
-}
+func Get(key string, ts *TransactionStack) {
+  
+  store := GlobalStore
 
-func (t *Transaction) Set(k, v string) { t.Store[k] = v }
-
-func (t *Transaction) Get(k string) {
-  if v, ok := t.Store[k]; ok {
-    fmt.Printf("%d : %d", k, v)
-  } else if v, ok := globalStore[k]; ok {
-    fmt.Printf("%d : %d", k, v)
-  } else {
-    fmt.Println("Value Unavailable")
+  if ts != nil && ts.Peek() != nil { store = ts.Peek().store }
+  if _, ok := store[key]; !ok { 
+    fmt.Printf("Key %s unavailable\n", key)
+    return 
   }
-}
 
-func (t * Transaction) TransferElementsToPrevStore() {
-  if t.nextTransaction == nil {
-    for k, v := range t.Store { globalStore[k] = v }
-  } else {
-    temp := t.nextTransaction
-    for k, v := range t.Store { temp.Store[k] = v } 
+  fmt.Println(store[key])
+} 
+
+func Set(key string, val string, ts *TransactionStack) {
+  
+  if ts == nil || ts.Peek() == nil {
+    fmt.Println("You are not inside a transaction")
+    return 
   }
+
+  store := ts.Peek().store 
+  store[key] = val 
 }
 
-// printing inside a Transaction will only get the Transaction store keys.
-func (t *Transaction) PrintKeyValues() {
-  for k, v := range t.Store { fmt.Printf("%s : %s\n", k, v) }
+func Count(ts *TransactionStack) {
+  
+  store := GlobalStore
+
+  if ts != nil && ts.top != nil { store = ts.Peek().store }
+
+  fmt.Println(len(store))
 }
 
-func (t *Transaction) PrintKeys() {
-  for k, _ := range t.Store { fmt.Printf("%s\n", k) }
+func Delete(key string, ts *TransactionStack) {
+  
+  store := GlobalStore
+
+  if(ts != nil && ts.top != nil) { store = ts.Peek().store }
+  if _, ok := store[key]; !ok { 
+    fmt.Printf("Key %s unavailable\n", key)
+    return
+  }
+  
+  delete(store, key)
 }
 
-func PrintKeyValuesGlobal() {
-  for k, v := range globalStore { fmt.Printf("%s : %s\n", k, v) }
-}
+func checkTransactionAndExecute(ts *TransactionStack, method func()) {
+  if ts.size == 0 {
+    fmt.Println("You are not inside a Transaction")
+    return 
+  }
 
-func PrintKeysGlobal() {
-  for k, _ := range globalStore { fmt.Printf("%s\n", k) }
+  method()
 }
 
 func main() {
-
-  fmt.Println("Konnichiwa, You are at K-V store v1")
-  var txn Transaction
-  var ts TransactionStack
-
-  for true {
-    var input string
+  reader := bufio.NewReader(os.Stdin)
+  items := &TransactionStack{}
+  for {
     fmt.Printf("> ")
-    fmt.Scanf("%s", &input)
-    inputSplit := strings.Split(input, " ")
-    
-    var k, v string 
-
-    token := inputSplit[0]
-    if len(inputSplit) > 2 {
-      k = inputSplit[1]
-      v = inputSplit[2]
-    } else if len(inputSplit) > 1 {
-      k = inputSplit[1]
-    } 
-    
-    switch token {
-      case "BEGIN" : txn := Begin() 
-      case "ROLLBACK" :  
-      case "COMMIT" : 
-      case "SET" : txn.Set(k, v)
-      case "GET" : txn.Get(k)
-      case "DELETE" : 
-      case "END" :  txn.TransferElementsToPrevStore()
-                    ts.removeTopOfStack() 
-      case "COUNT" : fmt.Println(len(globalStore))
-      case "PRINT KEYS" : if ts.size == 0 {
-                            PrintKeysGlobal()
-                          } else {
-                            fmt.Println("Note : Within the transaction the keys of the transaction are alone printed")
-                            txn.PrintKeys()  
-                          }
-      case "PRINT KEY VALUE PAIRS" : if ts.size == 0 {
-                                        PrintKeyValuesGlobal()
-                                     } else {
-                                        fmt.Println("Note : Within the transaction the key values of the transaction are alone printed")
-                                        txn.PrintKeyValues()
-                                     }
-      case "QUIT" : fmt.Println("Closing Session, Arigato")
-                    os.Exit(0)
-      default : fmt.Println("Enter a valid command")
+    text, _ := reader.ReadString('\n')
+    operation := strings.Fields(text)
+    switch operation[0] {
+      case "BEGIN": items.PushTransaction()
+      case "ROLLBACK" : checkTransactionAndExecute(items, items.RollBackTransaction)
+      case "COMMIT" : checkTransactionAndExecute(items, items.Commit)
+      case "END" : checkTransactionAndExecute(items, items.PopTransaction)
+      case "SET" : Set(operation[1], operation[2], items)
+      case "GET" : Get(operation[1], items)
+      case "DELETE" : Delete(operation[1], items)
+      case "COUNT" : Count(items)
+      case "QUIT" : os.Exit(0)
+      default : fmt.Println("Command Not Found")
     }
   }
 }

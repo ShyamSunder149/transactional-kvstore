@@ -5,9 +5,9 @@ Right now dumping all the code in a single file, later would do the LLD stuffs. 
 
 Things planned :
 - [x] Start off (having this bcoz im too bad at starting off things) 
-- [ ] Initial working code
+- [x] Initial working code
 
-- [x] Print keys, and key value pairs
+- [ ] Print keys, and key value pairs
 - [ ] Print stuffs batch by batch once the limit reaches
 
 - [ ] implement timing based automatic transaction rollback  
