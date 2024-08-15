@@ -14,5 +14,5 @@ Things planned :
 
 - [ ] Set transaction based counting and split this separately from global count
 
-- [ ] Refactor
+- [x] Refactor
 - [ ] Use generics and convert it to support all types of vars

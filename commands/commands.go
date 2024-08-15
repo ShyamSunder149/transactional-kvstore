@@ -20,6 +20,14 @@ var commands = map[string] Command {
   "QUIT" : quitProgram,
 }
 
+func checkArguments(args []string, size int) bool {
+  if(len(args) != size) {
+    fmt.Println("No of arguments is incorrect")
+    return false 
+  }
+  return true;
+}
+
 func Get(name string) Command {
   cmd, ok := commands[name]
   if !ok {
@@ -38,37 +46,26 @@ func commitTransaction (_ []string, tm *transaction.TransactionManager) { tm.Com
 func endTransaction (_ []string, tm *transaction.TransactionManager) { tm.End() }
 
 func setValue(args []string, tm *transaction.TransactionManager) {
-  if(len(args) != 2) {
-    fmt.Println("No of arguments is incorrect")
-    return 
-  }
-  
   if tm.GetCurrentTop() == nil {
     fmt.Println("You are not inside a transaction")
     return 
   }
 
+  if(!checkArguments(args, 2)) { return }  
   tm.CurrentStore().Set(args[0], args[1])
 }
 
 func getValue(args []string, tm *transaction.TransactionManager) {
-  if len(args) != 1 {
-    fmt.Println("No of Arguments is incorrect")
-    return 
-  }
-
+  if(!checkArguments(args, 1)) { return }  
   tm.CurrentStore().Get(args[0])
 }
 
 func deleteValue(args []string, tm *transaction.TransactionManager) {
-  if len(args) != 1 {
-    fmt.Println("No of Arguments is incorrect")
-    return
-  } 
-
+  if(!checkArguments(args, 1)) { return }  
   tm.CurrentStore().Delete(args[0])
 }
 
 func countValues(_ []string, tm *transaction.TransactionManager) { tm.CurrentStore().Count() }
 
 func quitProgram(_ []string, tm *transaction.TransactionManager) { os.Exit(0) }
+
